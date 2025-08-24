@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Running Race Game</title>
+<style>
+  body {margin:0;font-family:sans-serif;background:linear-gradient(to bottom,#87ceeb,#f7e79b);text-align:center;}
+  .hud {max-width:900px;margin:auto;display:flex;justify-content:space-between;font-weight:bold;padding:8px;}
+  .game {position:relative;width:100%;max-width:900px;height:350px;margin:10px auto;border-bottom:8px solid green;overflow:hidden;
+         background:linear-gradient(to bottom,#87ceeb,#f7e79b);border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.2);}
+  .runner {position:absolute;left:60px;bottom:8px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;}
+  .runner .sprite {font-size:42px;}
+  .runner.jump {animation:jump 0.55s ease-out;}
+  @keyframes jump {0%{transform:translateY(0)}50%{transform:translateY(-120px)}100%{transform:translateY(0)}}
+  .obstacle {position:absolute;bottom:8px;left:100%;width:46px;height:54px;display:flex;align-items:center;justify-content:center;}
+  .obstacle .sprite {font-size:40px;}
+  .overlay {position:absolute;inset:0;display:none;place-items:center;background:rgba(0,0,0,.4);color:#fff;font-size:22px;font-weight:bold;}
+  .overlay.show {display:grid;}
+  .controls {margin-top:15px;}
+  button {padding:10px 20px;font-size:18px;border:none;border-radius:8px;background:#28a745;color:white;font-weight:bold;cursor:pointer;
+          margin:5px;box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+  button:active {transform:scale(0.95);}
+</style>
+</head>
+<body>
+<div class="hud">
+  <div id="score">Score: 0</div>
+  <div id="high">High: 0</div>
+  <div id="level">Level: 1</div>
+</div>
+
+<div class="game" id="game">
+  <div id="runner" class="runner"><div class="sprite">🏃🏻‍➡️</div></div>
+  <div id="obstacle" class="obstacle"><div class="sprite">🌵</div></div>
+  <div id="overlay" class="overlay">Game Over!<br>Press Enter or Restart</div>
+</div>
+
+<div class="controls">
+  <button id="startBtn">Start</button>
+  <button id="jumpBtn">Jump</button>
+  <button id="restartBtn">Restart</button>
+</div>
+
+<script>
+const runner=document.getElementById("runner");
+const obstacle=document.getElementById("obstacle");
+const overlay=document.getElementById("overlay");
+const scoreEl=document.getElementById("score");
+const highEl=document.getElementById("high");
+const levelEl=document.getElementById("level");
+const jumpBtn=document.getElementById("jumpBtn");
+const restartBtn=document.getElementById("restartBtn");
+const startBtn=document.getElementById("startBtn");
+const game=document.getElementById("game");
+
+let isJumping=false,score=0,high=0,gameOver=true,gameStarted=false;
+let obsX; let speed=250; let last=0;
+
+function jump(){
+  if(isJumping||gameOver||!gameStarted) return;
+  isJumping=true;
+  runner.classList.remove("jump"); void runner.offsetWidth;
+  runner.classList.add("jump");
+  setTimeout(()=>isJumping=false,550);
+}
+function restart(){
+  score=0; speed=250; gameOver=false;
+  overlay.classList.remove("show");
+  obsX=game.clientWidth+60;
+  obstacle.style.left=obsX+"px";
+}
+function startGame(){
+  score=0; speed=250; gameOver=false; gameStarted=true;
+  overlay.classList.remove("show");
+  obsX=game.clientWidth+60;
+  obstacle.style.left=obsX+"px";
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.code==="Space"||e.code==="ArrowUp") jump();
+  if(e.code==="Enter"&&gameOver) restart();
+});
+jumpBtn.addEventListener("click",jump);
+restartBtn.addEventListener("click",restart);
+startBtn.addEventListener("click",startGame);
+
+function loop(ts){
+  if(!last) last=ts;
+  const dt=(ts-last)/1000; last=ts;
+  if(gameStarted && !gameOver){
+    obsX-=speed*dt;
+    obstacle.style.left=obsX+"px";
+    if(obsX<-60){
+      obsX=game.clientWidth+Math.random()*200+200;
+      score+=50; speed+=15;
+    }
+    // collision detection with padding
+    const r=runner.getBoundingClientRect();
+    const o=obstacle.getBoundingClientRect();
+    const pad=12;
+    const rBox={left:r.left+pad,right:r.right-pad,top:r.top+pad,bottom:r.bottom};
+    const oBox={left:o.left+pad,right:o.right-pad,top:o.top+pad,bottom:o.bottom};
+    if(!(rBox.right<oBox.left||rBox.left>oBox.right||rBox.bottom<oBox.top||rBox.top>oBox.bottom)){
+      gameOver=true;
+      overlay.classList.add("show");
+      if(score>high) high=score;
+    }
+    scoreEl.textContent="Score: "+Math.floor(score);
+    highEl.textContent="High: "+Math.floor(high);
+    let level=Math.min(1+Math.floor(score/200),5);
+    levelEl.textContent="Level: "+level;
+  }
+  requestAnimationFrame(loop);
+}
+
+obsX=game.clientWidth+60;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
